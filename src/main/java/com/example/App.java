@@ -3,135 +3,125 @@ package com.example;
 import static spark.Spark.*;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
 
 public class App {
-
     private static final Logger log = LoggerFactory.getLogger(App.class);
     private static final Gson gson = new Gson();
 
-    // ---- EXCEPCIÓN API ----
+    // ---- Error JSON controlado
     private static class ApiError extends Exception {
         private final int status;
-        public ApiError(String message, int status) { super(message); this.status = status; }
-        public int getStatus() { return this.status; }
+        ApiError(String msg, int status){ super(msg); this.status=status; }
+        int getStatus(){ return status; }
     }
 
     public static void main(String[] args) {
-        // Puerto configurable
+        // 1) Arranque básico
         port(getPort());
-
-        // CORS básico
         enableCORS();
 
-        // Inicializa BD (H2) y DAO
-        try { Db.init(); } catch (Exception e) { e.printStackTrace(); System.exit(1); }
+        // 2) (Opcional) inicializa H2 y DAO
+        try { Db.init(); } catch (Exception e) {
+            log.error("DB init error", e);
+            System.exit(1);
+        }
         UserDao dao = new UserDao();
 
-        // Manejador de errores
-        exception(ApiError.class, (e, req, res) -> {
+        // 3) Excepciones en JSON
+        exception(ApiError.class, (e,req,res) -> {
             res.status(e.getStatus());
-            res.body(gson.toJson(jsonMsg(e.getMessage())));
-            res.type("application/json");
+            res.type("application/json; charset=utf-8");
+            res.body(gson.toJson(msg(e.getMessage())));
+        });
+        exception(JsonSyntaxException.class, (e,req,res) -> {
+            res.status(400);
+            res.type("application/json; charset=utf-8");
+            res.body(gson.toJson(msg("Invalid JSON body")));
+        });
+        exception(Exception.class, (e,req,res) -> {
+            log.error("Unhandled", e);
+            res.status(500);
+            res.type("application/json; charset=utf-8");
+            res.body(gson.toJson(msg("Internal error")));
         });
 
-        // After → fuerza JSON (no toca strings como "OK" de CORS)
-        after((req, res) -> {
-            res.type("application/json");
-            if (!(res.body() instanceof String)) {
-                res.body(gson.toJson(res.body()));
-            }
-        });
+        // 4) Rutas (solo API)
+        get("/ping", (req,res) -> "pong");
 
-        // ---- RUTAS ----
-        get("/users", (req, res) -> dao.findAll());
+        get("/users", (req,res) -> {
+            res.type("application/json; charset=utf-8");
+            return dao.findAll();
+        }, gson::toJson);
 
-        get("/users/:id", (req, res) -> {
-            return findUserOr404(dao, req.params(":id"));
-        });
+        get("/users/:id", (req,res) -> {
+            res.type("application/json; charset=utf-8");
+            return dao.findById(req.params(":id"))
+                    .orElseThrow(() -> new ApiError("User not found",404));
+        }, gson::toJson);
 
-        post("/users/:id", (req, res) -> {
+        post("/users/:id", (req,res) -> {
+            res.type("application/json; charset=utf-8");
             String id = req.params(":id");
-            if (dao.exists(id)) throw new ApiError("User already exists", 409);
-
-            User payload = gson.fromJson(req.body(), User.class); // <- com.example.User
-            if (payload == null) throw new ApiError("Invalid body", 400);
-            if (payload.getName() == null || payload.getEmail() == null)
-                throw new ApiError("Invalid body. Required: name, email", 400);
-
-            payload.setId(id);
-            dao.insert(payload);
+            if (id==null || id.isBlank()) throw new ApiError("Invalid id",400);
+            if (dao.exists(id))           throw new ApiError("User already exists",409);
+            User body = gson.fromJson(req.body(), User.class);
+            if (body==null || body.getName()==null || body.getEmail()==null)
+                throw new ApiError("Invalid body. Required: name, email",400);
+            body.setId(id);
+            dao.insert(body);
             res.status(201);
-            return payload;
-        });
+            return body;
+        }, gson::toJson);
 
-        put("/users/:id", (req, res) -> {
+        put("/users/:id", (req,res) -> {
+            res.type("application/json; charset=utf-8");
             String id = req.params(":id");
-            User existing = findUserOr404(dao, id);
+            User u = dao.findById(id).orElseThrow(() -> new ApiError("User not found",404));
+            User body = gson.fromJson(req.body(), User.class);
+            if (body==null) throw new ApiError("Invalid body",400);
+            if (body.getName()!=null)  u.setName(body.getName());
+            if (body.getEmail()!=null) u.setEmail(body.getEmail());
+            dao.update(u);
+            return u;
+        }, gson::toJson);
 
-            User payload = gson.fromJson(req.body(), User.class);
-            if (payload == null) throw new ApiError("Invalid body", 400);
+        delete("/users/:id", (req,res) -> {
+            res.type("application/json; charset=utf-8");
+            if (!dao.delete(req.params(":id"))) throw new ApiError("User not found",404);
+            return msg("User deleted");
+        }, gson::toJson);
 
-            if (payload.getName()  != null) existing.setName(payload.getName());
-            if (payload.getEmail() != null) existing.setEmail(payload.getEmail());
+        // 5) Semillas
+        if (!dao.exists("1")) dao.insert(new User("1","Rafael","rafael@example.com"));
+        if (!dao.exists("2")) dao.insert(new User("2","Sofía","sofia@example.com"));
 
-            dao.update(existing);
-            return existing;
-        });
-
-        options("/users/:id", (req, res) -> {
-            res.header("Allow", "GET,POST,PUT,DELETE,OPTIONS");
-            String id = req.params(":id");
-            if (dao.exists(id)) { res.status(200); return jsonMsg("User exists"); }
-            else { res.status(404); return jsonMsg("User does not exist"); }
-        });
-
-        delete("/users/:id", (req, res) -> {
-            String id = req.params(":id");
-            boolean removed = dao.delete(id);
-            if (!removed) throw new ApiError("User not found", 404);
-            return jsonMsg("User deleted");
-        });
-
-        // Semillas (solo si no existen)
-        if (!dao.exists("1")) dao.insert(new User("1", "Rafael", "rafael@example.com"));
-        if (!dao.exists("2")) dao.insert(new User("2", "Sofía", "sofia@example.com"));
-
-        log.info("Spark Collectibles API (H2) running on port {}", getPort());
+        log.info("API ready on port {}", getPort());
     }
 
-    // ---- HELPERS ----
-    private static User findUserOr404(UserDao dao, String id) throws ApiError {
-        return dao.findById(id).orElseThrow(() -> new ApiError("User not found", 404));
+    // ---- Utiles
+    private static int getPort(){
+        try { return Integer.parseInt(System.getenv().getOrDefault("PORT","4567")); }
+        catch(Exception e){ return 4567; }
     }
+    private static Map<String,String> msg(String m){ return Collections.singletonMap("message",m); }
 
-    private static int getPort() {
-        String p = System.getenv("PORT");
-        if (p == null) return 4567;
-        try { return Integer.parseInt(p); } catch (NumberFormatException e) { return 4567; }
-    }
-
-    /** CORS mínimo para dev */
     private static void enableCORS() {
-        before((request, response) -> {
-            response.header("Access-Control-Allow-Origin", "*");
-            response.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-            response.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
+        before((rq,rs)->{
+            rs.header("Access-Control-Allow-Origin","*");
+            rs.header("Access-Control-Allow-Methods","GET,POST,PUT,DELETE,OPTIONS");
+            rs.header("Access-Control-Allow-Headers","Content-Type,Authorization");
         });
-        options("/*", (request, response) -> {
-            String reqHeaders = request.headers("Access-Control-Request-Headers");
-            if (reqHeaders != null) response.header("Access-Control-Allow-Headers", reqHeaders);
-            String reqMethod = request.headers("Access-Control-Request-Method");
-            if (reqMethod != null) response.header("Access-Control-Allow-Methods", reqMethod);
-            return "OK"; // el 'after' no lo convierte a JSON
+        options("/*",(rq,rs)->{
+            String h=rq.headers("Access-Control-Request-Headers");
+            if(h!=null) rs.header("Access-Control-Allow-Headers",h);
+            String m=rq.headers("Access-Control-Request-Method");
+            if(m!=null) rs.header("Access-Control-Allow-Methods",m);
+            return "OK";
         });
-    }
-
-    private static Map<String, String> jsonMsg(String msg) {
-        return Collections.singletonMap("message", msg);
     }
 }

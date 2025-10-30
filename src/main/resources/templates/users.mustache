@@ -1,0 +1,27 @@
+{{#layout}}
+  {{#content}}
+    {{#flash}}<p class="flash">{{flash}}</p>{{/flash}}
+
+    <table class="list">
+      <thead><tr><th>ID</th><th>Nombre</th><th>Email</th><th>Acciones</th></tr></thead>
+      <tbody>
+      {{#users}}
+        <tr>
+          <td>{{id}}</td>
+          <td>{{name}}</td>
+          <td>{{email}}</td>
+          <td>
+            <a href="/users/{{id}}/edit">Editar</a>
+            <form action="/users/{{id}}/delete" method="post" style="display:inline">
+              <button type="submit" onclick="return confirm('¿Eliminar {{name}}?')">Eliminar</button>
+            </form>
+          </td>
+        </tr>
+      {{/users}}
+      {{^users}}
+        <tr><td colspan="4">Sin usuarios</td></tr>
+      {{/users}}
+      </tbody>
+    </table>
+  {{/content}}
+{{/layout}}
