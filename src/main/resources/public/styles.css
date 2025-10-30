@@ -1,9 +1,51 @@
-body { font-family: system-ui, Arial, sans-serif; max-width: 900px; margin: 24px auto; padding: 0 16px; }
-h1 { margin: 0 0 8px; }
-nav a { margin-right: 12px; }
-table.list { width: 100%; border-collapse: collapse; }
-table.list th, table.list td { border: 1px solid #ddd; padding: 8px; }
-.flash { background: #e6ffed; border: 1px solid #b7ebc6; padding: 8px; }
-label { display:block; margin-top:12px; }
-input { width:100%; padding:8px; box-sizing:border-box; }
-button { margin-top:12px; }
+:root{
+  --bg:#0f172a;      /* slate-900 */
+  --panel:#111827;   /* gray-900 */
+  --ink:#e5e7eb;     /* gray-200 */
+  --muted:#9ca3af;   /* gray-400 */
+  --brand:#60a5fa;   /* blue-400 */
+  --danger:#ef4444;  /* red-500 */
+  --ok:#22c55e;      /* green-500 */
+  --border:#1f2937;  /* gray-800 */
+}
+
+*{ box-sizing: border-box; }
+html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+
+header{
+  max-width: 960px; margin: 24px auto 8px; padding: 0 16px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+h1{ margin:0; font-size:24px; }
+nav{ display:flex; gap:8px; }
+
+main{
+  max-width: 960px; margin: 0 auto 48px; padding: 16px;
+  background: var(--panel); border:1px solid var(--border); border-radius: 16px;
+}
+
+table{ width:100%; border-collapse: collapse; }
+th, td{ text-align:left; padding:12px 10px; border-bottom:1px solid var(--border); }
+th{ color: var(--muted); font-weight:600; }
+tbody tr:hover{ background: #0b1220; }
+
+.btn{
+  display:inline-block; padding:8px 12px; border-radius:10px; border:1px solid transparent;
+  background: var(--brand); color:#0b1220; text-decoration:none; font-weight:600; cursor:pointer;
+}
+.btn.outline{ background: transparent; color: var(--ink); border-color: var(--border); }
+.btn.small{ padding:6px 10px; font-size: 12px; }
+.btn.danger{ background: var(--danger); color: #fff; }
+
+.field{ margin-bottom: 14px; }
+label{ display:block; font-size:14px; color: var(--muted); margin-bottom:6px; }
+input[type="text"], input[type="email"]{
+  width:100%; padding:10px 12px; border-radius:10px; background:#0b1220; border:1px solid var(--border); color:var(--ink);
+}
+small{ color: var(--muted); }
+
+.actions{ display:flex; gap:8px; margin-top: 14px; }
+
+.msg{ margin:10px 0; padding:10px 12px; border-radius:10px; background:#0b1220; border:1px solid var(--border); }
+.msg.ok{ border-color: var(--ok); color: var(--ok); }
+.msg.err{ border-color: var(--danger); color: var(--danger); }
