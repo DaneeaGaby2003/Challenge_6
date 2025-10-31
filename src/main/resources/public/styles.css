@@ -1,51 +1,24 @@
-:root{
-  --bg:#0f172a;      /* slate-900 */
-  --panel:#111827;   /* gray-900 */
-  --ink:#e5e7eb;     /* gray-200 */
-  --muted:#9ca3af;   /* gray-400 */
-  --brand:#60a5fa;   /* blue-400 */
-  --danger:#ef4444;  /* red-500 */
-  --ok:#22c55e;      /* green-500 */
-  --border:#1f2937;  /* gray-800 */
-}
-
-*{ box-sizing: border-box; }
-html,body{ margin:0; padding:0; background:var(--bg); color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-
-header{
-  max-width: 960px; margin: 24px auto 8px; padding: 0 16px;
-  display:flex; align-items:center; justify-content:space-between;
-}
-h1{ margin:0; font-size:24px; }
-nav{ display:flex; gap:8px; }
-
-main{
-  max-width: 960px; margin: 0 auto 48px; padding: 16px;
-  background: var(--panel); border:1px solid var(--border); border-radius: 16px;
-}
-
-table{ width:100%; border-collapse: collapse; }
-th, td{ text-align:left; padding:12px 10px; border-bottom:1px solid var(--border); }
-th{ color: var(--muted); font-weight:600; }
-tbody tr:hover{ background: #0b1220; }
-
-.btn{
-  display:inline-block; padding:8px 12px; border-radius:10px; border:1px solid transparent;
-  background: var(--brand); color:#0b1220; text-decoration:none; font-weight:600; cursor:pointer;
-}
-.btn.outline{ background: transparent; color: var(--ink); border-color: var(--border); }
-.btn.small{ padding:6px 10px; font-size: 12px; }
-.btn.danger{ background: var(--danger); color: #fff; }
-
-.field{ margin-bottom: 14px; }
-label{ display:block; font-size:14px; color: var(--muted); margin-bottom:6px; }
-input[type="text"], input[type="email"]{
-  width:100%; padding:10px 12px; border-radius:10px; background:#0b1220; border:1px solid var(--border); color:var(--ink);
-}
-small{ color: var(--muted); }
-
-.actions{ display:flex; gap:8px; margin-top: 14px; }
-
-.msg{ margin:10px 0; padding:10px 12px; border-radius:10px; background:#0b1220; border:1px solid var(--border); }
-.msg.ok{ border-color: var(--ok); color: var(--ok); }
-.msg.err{ border-color: var(--danger); color: var(--danger); }
+:root { --fg:#0f172a; --muted:#64748b; --bg:#f8fafc; --card:#ffffff; --accent:#2563eb; --warn:#b45309; }
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial; color:var(--fg); background:var(--bg);}
+.container{max-width:980px;margin:auto;padding:24px}
+.topbar{background:#fff; border-bottom:1px solid #e5e7eb; padding:12px 24px; display:flex; align-items:center; gap:24px}
+.topbar h1{font-size:18px;margin:0}
+.topbar nav a{margin-right:12px;text-decoration:none;color:var(--muted)}
+.topbar nav a.active,.topbar nav a:hover{color:var(--accent)}
+.tbl{width:100%;border-collapse:collapse;background:var(--card);border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
+.tbl th,.tbl td{padding:10px 12px;border-bottom:1px solid #e5e7eb}
+.tbl thead th{background:#f1f5f9;text-align:left;font-weight:600}
+.card{background:var(--card);border:1px solid #e5e7eb;border-radius:12px;padding:16px}
+.card__head{border-bottom:1px solid #e5e7eb;margin:-16px -16px 12px;padding:12px 16px;border-top-left-radius:12px;border-top-right-radius:12px;background:#f8fafc}
+.grid{display:grid;grid-template-columns:280px 1fr;gap:16px}
+@media (max-width:720px){.grid{grid-template-columns:1fr}}
+.prod-img{width:100%;height:auto;border:1px solid #e5e7eb;border-radius:8px}
+.placeholder{display:grid;place-items:center;background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:8px;height:200px;color:var(--muted)}
+.form label{display:block;margin-top:8px;margin-bottom:4px;color:var(--muted);font-size:14px}
+.form input[type="number"], .form input[type="text"]{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px}
+.btn{display:inline-block;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;text-decoration:none}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn[disabled]{opacity:.6;cursor:not-allowed}
+.muted{color:var(--muted)}
+.warn{color:var(--warn)}
+.foot{padding:24px;text-align:center;color:var(--muted)}

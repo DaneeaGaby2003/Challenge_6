@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Productos</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>Collectibles Store</h1>
+  <nav>
+    <a href="/products" class="active">Productos</a>
+    <a href="/api/products" target="_blank">API (JSON)</a>
+  </nav>
+</header>
+
+<main class="container">
+  <h2>Productos</h2>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Producto</th>
+        <th>Precio</th>
+        <th>Stock</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {{#products}}
+      <tr>
+        <td>{{name}}</td>
+        <td>${{price}}</td>
+        <td>{{stock}}</td>
+        <td><a class="btn" href="/products/{{id}}">Ver</a></td>
+      </tr>
+    {{/products}}
+    {{^products}}
+      <tr><td colspan="4" class="muted">No hay productos.</td></tr>
+    {{/products}}
+    </tbody>
+  </table>
+</main>
+
+<footer class="foot">
+  <small>© {{year}} Collectibles Store</small>
+</footer>
+<script>
+  // Inserta el año en runtime si no lo pones desde el modelo
+  document.querySelector('.foot small').textContent = '© ' + new Date().getFullYear() + ' Collectibles Store';
+</script>
+</body>
+</html>

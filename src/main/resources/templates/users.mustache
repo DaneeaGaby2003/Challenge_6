@@ -2,55 +2,23 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Usuarios</title>
+  <title>Usuario {{id}}</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <header>
-  <h1>Usuarios</h1>
+  <h1>Usuario: {{name}}</h1>
   <nav>
-    <a class="btn" href="/users/new">+ Nuevo usuario</a>
-    <a class="btn outline" href="/ping" target="_blank">/ping</a>
+    <a class="btn" href="/users/{{id}}/edit"> Editar</a>
+    <a class="btn" href="/users">← Volver</a>
   </nav>
 </header>
 
-<main>
-  {{#users.length}}
-  <table>
-    <thead>
-    <tr><th>ID</th><th>Nombre</th><th>Email</th><th></th></tr>
-    </thead>
-    <tbody>
-    {{#users}}
-      <tr>
-        <td>{{id}}</td>
-        <td>{{name}}</td>
-        <td>{{email}}</td>
-        <td>
-          <a class="btn small" href="/users/{{id}}/edit">Editar</a>
-          <button class="btn small danger" data-id="{{id}}" onclick="delUser('{{id}}')">Borrar</button>
-        </td>
-      </tr>
-    {{/users}}
-    </tbody>
-  </table>
-  {{/users.length}}
+<article class="card">
+  <p><strong>ID:</strong> {{id}}</p>
+  <p><strong>Nombre:</strong> {{name}}</p>
+  <p><strong>Email:</strong> {{email}}</p>
+</article>
 
-  {{^users.length}}
-  <p>No hay usuarios aún.</p>
-  {{/users.length}}
-</main>
-
-<script>
-  async function delUser(id){
-    if(!confirm('¿Borrar usuario ' + id + '?')) return;
-    const res = await fetch('/users/' + id, { method: 'DELETE' });
-    if(res.ok){ location.reload(); }
-    else{
-      const txt = await res.text();
-      alert('Error: ' + txt);
-    }
-  }
-</script>
 </body>
 </html>

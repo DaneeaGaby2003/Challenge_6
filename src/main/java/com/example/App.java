@@ -1,180 +1,135 @@
 package com.example;
 
 import static spark.Spark.*;
-
-import com.google.gson.Gson;
-import com.google.gson.JsonSyntaxException;
+import com.google.gson.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import spark.ModelAndView;
-import spark.template.mustache.MustacheTemplateEngine;
-
-import java.sql.SQLException;
+import java.math.BigDecimal;
+import java.sql.Connection;
 import java.util.*;
 
 public class App {
-
     private static final Logger log = LoggerFactory.getLogger(App.class);
     private static final Gson gson = new Gson();
 
-    // --- Excepción API JSON ---
-    private static class ApiError extends Exception {
-        private final int status;
-        public ApiError(String message, int status) { super(message); this.status = status; }
-        public int getStatus() { return status; }
-    }
-
     public static void main(String[] args) {
-        port(getPort());
+        int serverPort = 4567;
+        try {
+            String env = System.getenv("PORT");
+            if (env != null && !env.isBlank()) serverPort = Integer.parseInt(env.trim());
+        } catch (Exception ignored) {}
+        port(serverPort);
 
-        // Archivos estáticos ANTES de mapear rutas
         staticFiles.location("/public");
 
-        enableCORS();
-
-        // DB + DAO
-        try {
-            Db.init(); // puede lanzar SQLException
-        } catch (SQLException e) {
-            log.error("DB init failed", e);
-            throw new RuntimeException(e);
-        }
-        UserDao dao = new UserDao();
-
-        // Semillas usando Optional
-        if (dao.findById("1").isEmpty()) dao.insert(new User("1","Rafael","rafael@example.com"));
-        if (dao.findById("2").isEmpty()) dao.insert(new User("2","Sofía","sofia@example.com"));
-
-        // ---------- EXCEPCIONES JSON ----------
-        exception(ApiError.class, (e, req, res) -> {
-            res.status(((ApiError)e).getStatus());
-            res.type("application/json;charset=utf-8");
-            res.body(gson.toJson(jsonMsg(e.getMessage())));
-        });
-        exception(JsonSyntaxException.class, (e, req, res) -> {
-            res.status(400);
-            res.type("application/json;charset=utf-8");
-            res.body(gson.toJson(jsonMsg("Invalid JSON body")));
-        });
-        exception(Exception.class, (e, req, res) -> {
-            res.status(500);
-            res.type("application/json;charset=utf-8");
-            res.body(gson.toJson(jsonMsg("Server error")));
-            log.error("Unhandled error", e);
-        });
-
-        // ---------- API ----------
-        get("/ping", (req, res) -> "pong");
-
-        get("/users", (req, res) -> {
-            res.type("application/json;charset=utf-8");
-            return gson.toJson(dao.findAll());
-        });
-
-        get("/users/:id", (req, res) -> {
-            res.type("application/json;charset=utf-8");
-            String id = req.params(":id");
-            Optional<User> u = dao.findById(id);
-            if (u.isEmpty()) throw new ApiError("User not found", 404);
-            return gson.toJson(u.get());
-        });
-
-        post("/users/:id", (req, res) -> {
-            res.type("application/json;charset=utf-8");
-            String id = req.params(":id");
-
-            if (dao.findById(id).isPresent())
-                throw new ApiError("User already exists", 409);
-
-            User payload = gson.fromJson(req.body(), User.class);
-            if (payload == null || payload.getName() == null || payload.getEmail() == null)
-                throw new ApiError("Invalid body. Required: name, email", 400);
-
-            payload.setId(id);
-            dao.insert(payload);
-            res.status(201);
-            return gson.toJson(payload);
-        });
-
-        put("/users/:id", (req, res) -> {
-            res.type("application/json;charset=utf-8");
-            String id = req.params(":id");
-
-            Optional<User> existingOpt = dao.findById(id);
-            if (existingOpt.isEmpty()) throw new ApiError("User not found", 404);
-
-            User existing = existingOpt.get();
-            User payload = gson.fromJson(req.body(), User.class);
-            if (payload == null) throw new ApiError("Invalid JSON body", 400);
-
-            if (payload.getName() != null)  existing.setName(payload.getName());
-            if (payload.getEmail() != null) existing.setEmail(payload.getEmail());
-
-            dao.update(existing);
-            return gson.toJson(existing);
-        });
-
-        delete("/users/:id", (req, res) -> {
-            res.type("application/json;charset=utf-8");
-            String id = req.params(":id");
-            if (dao.findById(id).isEmpty()) throw new ApiError("User not found", 404);
-            dao.delete(id);
-            return gson.toJson(jsonMsg("User deleted"));
-        });
-
-        // ---------- VISTAS ----------
-        MustacheTemplateEngine engine = new MustacheTemplateEngine();
-
-        get("/", (req, res) -> {
-            Map<String,Object> model = new HashMap<>();
-            model.put("users", dao.findAll());
-            return new ModelAndView(model, "users.mustache");
-        }, engine);
-
-        get("/users/new", (req, res) -> {
-            Map<String,Object> model = new HashMap<>();
-            model.put("mode", "create");
-            model.put("isCreate", true);
-            return new ModelAndView(model, "user_form.mustache");
-        }, engine);
-
-        get("/users/:id/edit", (req, res) -> {
-            String id = req.params(":id");
-            Optional<User> u = dao.findById(id);
-            if (u.isEmpty()) halt(404, "Not found");
-            Map<String,Object> model = new HashMap<>();
-            model.put("mode", "edit");
-            model.put("isEdit", true);
-            model.put("user", u.get());
-            return new ModelAndView(model, "user_form.mustache");
-        }, engine);
-
-        log.info("API ready on port {}", getPort());
-    }
-
-    private static int getPort() {
-        String p = System.getenv("PORT");
-        if (p == null) return 4567;
-        try { return Integer.parseInt(p); } catch (NumberFormatException e) { return 4567; }
-    }
-
-    private static Map<String,String> jsonMsg(String msg){
-        return Collections.singletonMap("message", msg);
-    }
-
-    private static void enableCORS(){
         before((req, res) -> {
             res.header("Access-Control-Allow-Origin", "*");
             res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
             res.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
         });
-        options("/*", (req, res) -> {
-            String reqHeaders = req.headers("Access-Control-Request-Headers");
-            if (reqHeaders != null) res.header("Access-Control-Allow-Headers", reqHeaders);
-            String reqMethod = req.headers("Access-Control-Request-Method");
-            if (reqMethod != null) res.header("Access-Control-Allow-Methods", reqMethod);
-            res.type("application/json;charset=utf-8");
-            return gson.toJson(jsonMsg("ok"));
+        options("/*", (req, res) -> { res.status(204); return ""; });
+
+        Connection conn = Db.get();
+        ProductDao productDao = new ProductDao(conn);
+
+        if (productDao.findAll().isEmpty()) {
+            Product a = new Product();
+            a.setId("p1"); a.setName("Figura Goku");
+            a.setDescr("SSJ Blue 15cm"); a.setImageUrl(null);
+            a.setPrice(new BigDecimal("499.00")); a.setStock(10);
+            productDao.create(a);
+
+            Product b = new Product();
+            b.setId("p2"); b.setName("Carta Pikachu");
+            b.setDescr("Holo 1st ed"); b.setImageUrl(null);
+            b.setPrice(new BigDecimal("1299.00")); b.setStock(5);
+            productDao.create(b);
+        }
+
+        get("/ping", (req, res) -> "pong");
+
+        path("/api", () -> {
+            path("/products", () -> {
+                get("", (req, res) -> json(res, productDao.findAll()));
+                get("/:id", (req, res) -> productDao.findById(req.params("id"))
+                        .<Object>map(p -> json(res, p))
+                        .orElseGet(() -> err(res, 404, "Product not found")));
+                post("/:id", (req, res) -> {
+                    String id = req.params("id");
+                    JsonObject body = parseJson(req);
+                    String name  = str(body, "name");
+                    String descr = str(body, "descr");
+                    String image = str(body, "image_url");
+                    BigDecimal price = decimal(body, "price");
+                    Integer stock    = integer(body, "stock");
+
+                    if (name == null || price == null || stock == null)
+                        return err(res, 400, "Required: name, price, stock");
+                    if (productDao.findById(id).isPresent())
+                        return err(res, 409, "Product already exists");
+
+                    Product p = new Product();
+                    p.setId(id); p.setName(name); p.setDescr(descr);
+                    p.setImageUrl(image); p.setPrice(price); p.setStock(stock);
+
+                    productDao.create(p);
+                    res.status(201);
+                    return json(res, Map.of("id", id, "name", name));
+                });
+                put("/:id", (req, res) -> {
+                    String id = req.params("id");
+                    var opt = productDao.findById(id);
+                    if (opt.isEmpty()) return err(res, 404, "Product not found");
+                    Product p = opt.get();
+
+                    JsonObject body = parseJson(req);
+                    if (body.has("name"))      p.setName(str(body, "name"));
+                    if (body.has("descr"))     p.setDescr(str(body, "descr"));
+                    if (body.has("image_url")) p.setImageUrl(str(body, "image_url"));
+                    if (body.has("price"))     p.setPrice(decimal(body, "price"));
+                    if (body.has("stock"))     p.setStock(integer(body, "stock"));
+
+                    productDao.update(p);
+                    return json(res, p);
+                });
+                delete("/:id", (req, res) -> {
+                    boolean ok = productDao.delete(req.params("id"));
+                    if (!ok) return err(res, 404, "Product not found");
+                    return json(res, Map.of("message", "Product deleted"));
+                });
+            });
         });
+
+        log.info("API ready on port {}", serverPort);
+    }
+
+    private static JsonObject parseJson(spark.Request req) {
+        try {
+            return JsonParser.parseString(req.body()).getAsJsonObject();
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid JSON body");
+        }
+    }
+
+    private static Object json(spark.Response res, Object o) {
+        res.type("application/json;charset=utf-8");
+        return gson.toJson(o);
+    }
+
+    private static Object err(spark.Response res, int code, String msg) {
+        res.status(code); res.type("application/json;charset=utf-8");
+        return gson.toJson(Map.of("message", msg));
+    }
+
+    private static String str(JsonObject o, String k) {
+        return o.has(k) && !o.get(k).isJsonNull() ? o.get(k).getAsString() : null;
+    }
+
+    private static BigDecimal decimal(JsonObject o, String k) {
+        return o.has(k) && !o.get(k).isJsonNull() ? new BigDecimal(o.get(k).getAsString()) : null;
+    }
+
+    private static Integer integer(JsonObject o, String k) {
+        return o.has(k) && !o.get(k).isJsonNull() ? o.get(k).getAsInt() : null;
     }
 }

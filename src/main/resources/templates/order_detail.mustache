@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Orden #{{order.id}}</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>Collectibles Store</h1>
+  <nav>
+    <a href="/products">Productos</a>
+  </nav>
+</header>
+
+<main class="container">
+  <section class="card">
+    <header class="card__head">
+      <h2>Orden #{{order.id}}</h2>
+    </header>
+
+    <p><b>Usuario:</b> {{order.userId}}</p>
+    <p><b>Fecha:</b> {{order.createdAt}}</p>
+    <p><b>Total:</b> ${{order.total}}</p>
+
+    <h3>Items</h3>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Cantidad</th>
+          <th>Precio</th>
+          <th>Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#items}}
+        <tr>
+          <td>{{productName}}</td>
+          <td>{{qty}}</td>
+          <td>${{price}}</td>
+          <td>${{subtotal}}</td>
+        </tr>
+        {{/items}}
+      </tbody>
+    </table>
+  </section>
+
+  <p><a href="/products">← Seguir comprando</a></p>
+</main>
+
+<footer class="foot">
+  <small>© {{year}} Collectibles Store</small>
+</footer>
+<script>
+  document.querySelector('.foot small').textContent = '© ' + new Date().getFullYear() + ' Collectibles Store';
+</script>
+</body>
+</html>

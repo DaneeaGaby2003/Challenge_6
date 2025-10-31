@@ -2,99 +2,36 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>{{#mode}}{{.}}{{/mode}} usuario</title>
+  <title>{{title}}</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <header>
-  <h1>{{#mode}}{{#isCreate}}Crear{{/isCreate}}{{#isEdit}}Editar{{/isEdit}}{{/mode}} usuario</h1>
-  <nav>
-    <a class="btn outline" href="/">← Volver</a>
-  </nav>
+  <h1>{{title}}</h1>
+  <nav><a class="btn" href="/users">← Volver</a></nav>
 </header>
 
-<main>
-  <form id="userForm">
-    <div class="field">
-      <label for="id">ID</label>
-      <input id="id" name="id" type="text" placeholder="Ej. 3" {{#mode}}{{#isEdit}}value="{{user.id}}" readonly{{/isEdit}}{{/mode}}>
-      <small>El ID define la ruta <code>/users/:id</code></small>
-    </div>
+<form class="form" method="post" action="{{action}}">
+  <div class="field">
+    <label for="id">ID</label>
+    <input id="id" name="id" type="text" required {{#isEdit}}readonly{{/isEdit}} value="{{user.id}}">
+  </div>
 
-    <div class="field">
-      <label for="name">Nombre</label>
-      <input id="name" name="name" type="text" placeholder="Nombre" {{#mode}}{{#isEdit}}value="{{user.name}}"{{/isEdit}}{{/mode}} required>
-    </div>
+  <div class="field">
+    <label for="name">Nombre</label>
+    <input id="name" name="name" type="text" required value="{{user.name}}">
+  </div>
 
-    <div class="field">
-      <label for="email">Email</label>
-      <input id="email" name="email" type="email" placeholder="correo@ejemplo.com" {{#mode}}{{#isEdit}}value="{{user.email}}"{{/isEdit}}{{/mode}} required>
-    </div>
+  <div class="field">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" required value="{{user.email}}">
+  </div>
 
-    <div id="msg" class="msg" hidden></div>
+  <div class="actions">
+    <button class="btn primary" type="submit">{{submitText}}</button>
+    <a class="btn" href="/users">Cancelar</a>
+  </div>
+</form>
 
-    <div class="actions">
-      <button type="submit" class="btn">{{#mode}}{{#isCreate}}Crear{{/isCreate}}{{#isEdit}}Guardar{{/isEdit}}{{/mode}}</button>
-      <a class="btn outline" href="/">Cancelar</a>
-    </div>
-  </form>
-</main>
-
-<script>
-  // El servidor no conoce "isCreate/isEdit"; lo deducimos del modelo:
-  const MODE = "{{mode}}"; // "create" o "edit"
-  const isEdit = MODE === "edit";
-
-  // Si Mustache no llenó flags, derivamos en cliente:
-  // (Si quieres, puedes setear estas flags desde App.java)
-  document.addEventListener('DOMContentLoaded', () => {
-    const idInput = document.getElementById('id');
-    if(isEdit){ idInput.setAttribute('readonly', 'readonly'); }
-  });
-
-  const form = document.getElementById('userForm');
-  const msg = document.getElementById('msg');
-
-  function showMessage(text, ok=false){
-    msg.textContent = text;
-    msg.hidden = false;
-    msg.className = 'msg ' + (ok ? 'ok' : 'err');
-  }
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const id = document.getElementById('id').value.trim();
-    const name = document.getElementById('name').value.trim();
-    const email = document.getElementById('email').value.trim();
-
-    if(!id || !name || !email){
-      showMessage('Completa todos los campos');
-      return;
-    }
-
-    try{
-      const res = await fetch('/users/' + encodeURIComponent(id), {
-        method: isEdit ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email })
-      });
-
-      if(res.ok){
-        showMessage('Guardado correctamente', true);
-        // Volvemos al listado tras 600ms
-        setTimeout(()=> location.href = '/', 600);
-      }else{
-        const txt = await res.text();
-        showMessage('Error '+res.status+': ' + txt);
-      }
-    }catch(err){
-      showMessage('Error de red: ' + err.message);
-    }
-  });
-
-  // Mustache helpers sustitutos (para el título)
-  // Si quieres que diga "Crear" o "Editar" arriba, App.java puede setear flags:
-  // model.put("isCreate", true/false); model.put("isEdit", true/false);
-</script>
 </body>
 </html>

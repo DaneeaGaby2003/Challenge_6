@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>{{p.name}} • Producto</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>Collectibles Store</h1>
+  <nav>
+    <a href="/products">Productos</a>
+    <a href="/api/products" target="_blank">API (JSON)</a>
+  </nav>
+</header>
+
+<main class="container">
+  <article class="card">
+    <header class="card__head">
+      <h2>{{p.name}}</h2>
+    </header>
+
+    <div class="grid">
+      <div>
+        {{#p.imageUrl}}
+          <img src="{{.}}" alt="{{p.name}}" class="prod-img">
+        {{/p.imageUrl}}
+        {{^p.imageUrl}}
+          <div class="placeholder">Sin imagen</div>
+        {{/p.imageUrl}}
+      </div>
+
+      <div>
+        <p class="muted">{{p.descr}}</p>
+        <p><b>Precio:</b> ${{p.price}}</p>
+        <p><b>Stock:</b> {{p.stock}}</p>
+
+        <form method="post" action="/purchase" class="form">
+          <input type="hidden" name="productId" value="{{p.id}}">
+          <label>Cantidad</label>
+          <input type="number" name="qty" min="1" max="{{p.stock}}" value="1" required>
+
+          <label>Usuario (ID)</label>
+          <input type="text" name="userId" value="1" required>
+
+          <button type="submit" class="btn primary" {{#noStock}}disabled{{/noStock}}>
+            Comprar
+          </button>
+        </form>
+        {{#noStock}}
+          <p class="warn">Sin stock disponible.</p>
+        {{/noStock}}
+      </div>
+    </div>
+  </article>
+
+  <p><a href="/products">← Volver al listado</a></p>
+</main>
+
+<footer class="foot">
+  <small>© {{year}} Collectibles Store</small>
+</footer>
+<script>
+  document.querySelector('.foot small').textContent = '© ' + new Date().getFullYear() + ' Collectibles Store';
+</script>
+</body>
+</html>
