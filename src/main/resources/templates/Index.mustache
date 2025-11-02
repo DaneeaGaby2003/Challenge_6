@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Collectibles – Inicio</title>
+  <link rel="stylesheet" href="/styles.css"/>
+  <style>
+    .container { max-width: 1100px; margin: 0 auto; padding: 1rem; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; padding:.5rem 1rem; border-bottom:1px solid #ddd; }
+    .grid-two { display:grid; grid-template-columns: 2fr 1fr; gap:1rem; }
+    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; }
+    .card { border:1px solid #e5e5e5; border-radius:12px; padding:1rem; }
+    .price { font-weight:700; }
+    .price.old { text-decoration: line-through; opacity:.6; margin-right:.25rem; }
+    .alert { padding:.6rem; border-radius:8px; margin-bottom:1rem; }
+    .alert.error { background:#fdecea; border:1px solid #f5c2c0; color:#7c1c17; }
+    .alert.success { background:#e9f7ef; border:1px solid #c6ebd4; color:#0f5132; }
+    .muted { color:#666; font-size:.9rem; }
+    .form label { display:block; margin-top:.5rem; }
+    .form input, .form button { width:100%; padding:.6rem; margin-top:.25rem; }
+    .footer { margin-top:2rem; padding:1rem; border-top:1px solid #eee; text-align:center; }
+    @media (max-width: 800px){ .grid-two { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <h1>Collectibles</h1>
+    <nav><a href="/">Inicio</a></nav>
+  </header>
+
+  <main class="container">
+
+    {{#flash}}<div class="alert success">{{.}}</div>{{/flash}}
+    {{#error}}<div class="alert error">{{.}}</div>{{/error}}
+
+    <!-- Buscador -->
+    <form method="get" action="/" style="margin:0 0 1rem 0;">
+      <input name="q" value="{{q}}" placeholder="Buscar por nombre o descripción" />
+      <button type="submit">Filtrar</button>
+    </form>
+
+    <section class="grid-two">
+      <!-- Columna izquierda: listado -->
+      <div>
+        <h2>Productos</h2>
+        <div class="grid" id="grid">
+          {{#products}}
+          <article class="card">
+            <h3>{{name}}</h3>
+            <p><small>ID: {{id}}</small></p>
+            {{#descr}}<p>{{descr}}</p>{{/descr}}
+
+            {{#promoPrice}}
+              <p>
+                <span class="price old">${{price}}</span>
+                <span class="price">${{promoPrice}}</span>
+              </p>
+              {{#validUntil}}<p class="muted">Válido hasta: {{validUntil}}</p>{{/validUntil}}
+            {{/promoPrice}}
+
+            {{^promoPrice}}
+              <p class="price">${{price}}</p>
+              <p class="muted">Sin oferta vigente</p>
+            {{/promoPrice}}
+          </article>
+          {{/products}}
+
+          {{^products}}
+          <p>No hay productos disponibles.</p>
+          {{/products}}
+        </div>
+      </div>
+
+      <!-- Columna derecha: formulario -->
+      <div>
+        <section class="card">
+          <h2>Gestionar oferta</h2>
+          <form method="post" action="/offers" class="form">
+            <label for="itemId">ID del ítem</label>
+            <input id="itemId" name="itemId" required placeholder="Ej: p1" />
+
+            <label for="promoPrice">Precio promocional</label>
+            <input id="promoPrice" name="promoPrice" type="number" min="0" step="0.01" required />
+
+            <label for="validUntil">Válido hasta</label>
+            <input id="validUntil" name="validUntil" type="date" required />
+
+            <button type="submit">Guardar oferta</button>
+            <p class="muted">Usa IDs existentes (ej: p1, p2).</p>
+          </form>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <small>© {{year}} Collectibles</small>
+  </footer>
+</body>
+</html>

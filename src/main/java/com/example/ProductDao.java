@@ -1,82 +1,161 @@
 package com.example;
 
 import java.sql.*;
-import java.util.*;
-import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
+/**
+ * DAO para products + ofertas (tabla product_offers).
+ * Usa H2 y MERGE para UPSERT.
+ */
 public class ProductDao {
-    private final Connection c;
 
-    public ProductDao(Connection c) { this.c = c; }
+    private final Connection conn;
 
+    public ProductDao(Connection conn) {
+        this.conn = conn;
+        ensureOfferSchema();
+    }
+
+    /** Crea tabla de ofertas si no existe (no modifica Db.java). */
+    private void ensureOfferSchema() {
+        final String sql = """
+            CREATE TABLE IF NOT EXISTS product_offers(
+              product_id  VARCHAR(40) PRIMARY KEY,
+              promo_price DECIMAL(12,2) NOT NULL,
+              valid_until DATE NOT NULL,
+              CONSTRAINT fk_offer_product FOREIGN KEY (product_id) REFERENCES products(id)
+            )
+            """;
+        try (Statement st = conn.createStatement()) {
+            st.execute(sql);
+        } catch (SQLException e) {
+            throw new RuntimeException("No se pudo asegurar el esquema de ofertas", e);
+        }
+    }
+
+    /** Lista todos los productos, uniendo oferta si existe. */
     public List<Product> findAll() {
+        final String sql = """
+            SELECT p.id, p.name, p.descr, p.image_url, p.price, p.stock,
+                   o.promo_price, o.valid_until
+            FROM products p
+            LEFT JOIN product_offers o ON o.product_id = p.id
+            ORDER BY p.name
+            """;
         List<Product> out = new ArrayList<>();
-        String sql = "SELECT id,name,descr,image_url,price,stock FROM products ORDER BY id";
-        try (PreparedStatement ps = c.prepareStatement(sql);
+        try (PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) out.add(map(rs));
-        } catch (SQLException e) { throw new RuntimeException(e); }
+            while (rs.next()) out.add(mapRow(rs));
+        } catch (SQLException e) {
+            throw new RuntimeException("Error consultando productos", e);
+        }
         return out;
     }
 
+    /** Lista con filtro de texto en nombre/descr (case-insensitive). */
+    public List<Product> findAllFiltered(String q) {
+        String base = """
+          SELECT p.id, p.name, p.descr, p.image_url, p.price, p.stock,
+                 o.promo_price, o.valid_until
+          FROM products p
+          LEFT JOIN product_offers o ON o.product_id = p.id
+        """;
+        boolean hasQ = q != null && !q.isBlank();
+        String where = hasQ ? "WHERE LOWER(p.name) LIKE ? OR LOWER(p.descr) LIKE ?" : "";
+        String order = " ORDER BY p.name";
+
+        List<Product> out = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(base + where + order)) {
+            if (hasQ) {
+                String like = "%" + q.toLowerCase().trim() + "%";
+                ps.setString(1, like);
+                ps.setString(2, like);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) out.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error consultando productos con filtro", e);
+        }
+        return out;
+    }
+
+    /** Busca por id y trae oferta si existe. */
     public Optional<Product> findById(String id) {
-        String sql = "SELECT id,name,descr,image_url,price,stock FROM products WHERE id=?";
-        try (PreparedStatement ps = c.prepareStatement(sql)) {
+        final String sql = """
+            SELECT p.id, p.name, p.descr, p.image_url, p.price, p.stock,
+                   o.promo_price, o.valid_until
+            FROM products p
+            LEFT JOIN product_offers o ON o.product_id = p.id
+            WHERE p.id = ?
+            """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, id);
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return Optional.of(map(rs));
+                if (rs.next()) return Optional.of(mapRow(rs));
+                return Optional.empty();
             }
-        } catch (SQLException e) { throw new RuntimeException(e); }
-        return Optional.empty();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error buscando producto " + id, e);
+        }
     }
 
-    public void create(Product p) {
-        String sql = "INSERT INTO products(id,name,descr,image_url,price,stock) VALUES(?,?,?,?,?,?)";
-        try (PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, p.getId());
-            ps.setString(2, p.getName());
-            ps.setString(3, p.getDescr());
-            ps.setString(4, p.getImageUrl());
-            ps.setBigDecimal(5, p.getPrice());
-            ps.setInt(6, p.getStock());
-            ps.executeUpdate();
-        } catch (SQLException e) { throw new RuntimeException(e); }
-    }
-
+    /** Actualiza datos base del producto (name/descr/image/price/stock). */
     public void update(Product p) {
-        String sql = """
+        final String sql = """
             UPDATE products
                SET name=?, descr=?, image_url=?, price=?, stock=?
              WHERE id=?
-        """;
-        try (PreparedStatement ps = c.prepareStatement(sql)) {
+            """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, p.getName());
             ps.setString(2, p.getDescr());
             ps.setString(3, p.getImageUrl());
-            ps.setBigDecimal(4, p.getPrice());
+            ps.setBigDecimal(4, java.math.BigDecimal.valueOf(p.getPrice()));
             ps.setInt(5, p.getStock());
             ps.setString(6, p.getId());
             ps.executeUpdate();
-        } catch (SQLException e) { throw new RuntimeException(e); }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error actualizando producto " + p.getId(), e);
+        }
     }
 
-    /** Devuelve true si borrÃ³, false si no existÃ­a. */
-    public boolean delete(String id) {
-        String sql = "DELETE FROM products WHERE id=?";
-        try (PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, id);
-            return ps.executeUpdate() == 1;
-        } catch (SQLException e) { throw new RuntimeException(e); }
+    /** Crea/actualiza oferta usando MERGE (UPSERT) en H2. */
+    public void saveOrUpdateOffer(String productId, double promoPrice, String validUntilIso) {
+        final String sql = """
+            MERGE INTO product_offers(product_id, promo_price, valid_until)
+            KEY(product_id)
+            VALUES (?, ?, ?)
+            """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, productId);
+            ps.setBigDecimal(2, java.math.BigDecimal.valueOf(promoPrice));
+            // yyyy-MM-dd -> java.sql.Date
+            ps.setDate(3, java.sql.Date.valueOf(validUntilIso));
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error guardando oferta para " + productId, e);
+        }
     }
 
-    private Product map(ResultSet rs) throws SQLException {
+    // ===== util =====
+    private Product mapRow(ResultSet rs) throws SQLException {
         Product p = new Product();
         p.setId(rs.getString("id"));
         p.setName(rs.getString("name"));
         p.setDescr(rs.getString("descr"));
         p.setImageUrl(rs.getString("image_url"));
-        p.setPrice(rs.getBigDecimal("price"));
+        p.setPrice(rs.getBigDecimal("price").doubleValue());
         p.setStock(rs.getInt("stock"));
+
+        java.math.BigDecimal promo = (java.math.BigDecimal) rs.getObject("promo_price");
+        if (promo != null) p.setPromoPrice(promo.doubleValue());
+
+        Date until = rs.getDate("valid_until");
+        if (until != null) p.setValidUntil(until.toLocalDate().toString()); // yyyy-MM-dd
+
         return p;
     }
 }

@@ -1,135 +1,124 @@
 package com.example;
 
 import static spark.Spark.*;
-import com.google.gson.*;
+
+import java.sql.Connection;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.math.BigDecimal;
-import java.sql.Connection;
-import java.util.*;
+
+import spark.ModelAndView;
+import spark.template.mustache.MustacheTemplateEngine;
 
 public class App {
+
     private static final Logger log = LoggerFactory.getLogger(App.class);
-    private static final Gson gson = new Gson();
 
     public static void main(String[] args) {
-        int serverPort = 4567;
-        try {
-            String env = System.getenv("PORT");
-            if (env != null && !env.isBlank()) serverPort = Integer.parseInt(env.trim());
-        } catch (Exception ignored) {}
-        port(serverPort);
 
+        // Archivos estáticos (src/main/resources/public)
         staticFiles.location("/public");
 
-        before((req, res) -> {
-            res.header("Access-Control-Allow-Origin", "*");
-            res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-            res.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
+        // Handlers de errores/excepciones
+        exception(IllegalArgumentException.class, (ex, req, res) -> {
+            log.warn("Solicitud inválida: {}", ex.getMessage());
+            res.status(400);
+            res.body("Solicitud inválida: " + ex.getMessage());
         });
-        options("/*", (req, res) -> { res.status(204); return ""; });
 
+        notFound((req, res) -> {
+            res.type("text/html; charset=utf-8");
+            return "<h1>404</h1><p>Recurso no encontrado.</p>";
+        });
+
+        internalServerError((req, res) -> {
+            res.type("text/html; charset=utf-8");
+            return "<h1>500</h1><p>Error interno. Intenta más tarde.</p>";
+        });
+
+        // Ruta de diagnóstico
+        get("/ping", (req, res) -> "pong");
+
+        // ===== Conexión H2 y DAO =====
         Connection conn = Db.get();
         ProductDao productDao = new ProductDao(conn);
 
-        if (productDao.findAll().isEmpty()) {
-            Product a = new Product();
-            a.setId("p1"); a.setName("Figura Goku");
-            a.setDescr("SSJ Blue 15cm"); a.setImageUrl(null);
-            a.setPrice(new BigDecimal("499.00")); a.setStock(10);
-            productDao.create(a);
+        // ===== Ruta Home (index) con filtro 'q' =====
+        get("/", (req, res) -> {
+            Map<String, Object> model = new HashMap<>();
+            model.put("year", Calendar.getInstance().get(Calendar.YEAR));
 
-            Product b = new Product();
-            b.setId("p2"); b.setName("Carta Pikachu");
-            b.setDescr("Holo 1st ed"); b.setImageUrl(null);
-            b.setPrice(new BigDecimal("1299.00")); b.setStock(5);
-            productDao.create(b);
-        }
+            // Mensaje flash
+            String flash = req.session().attribute("flash");
+            if (flash != null) {
+                model.put("flash", flash);
+                req.session().removeAttribute("flash");
+            }
 
-        get("/ping", (req, res) -> "pong");
+            // Filtro
+            String q = req.queryParams("q");
+            model.put("q", q == null ? "" : q);
 
-        path("/api", () -> {
-            path("/products", () -> {
-                get("", (req, res) -> json(res, productDao.findAll()));
-                get("/:id", (req, res) -> productDao.findById(req.params("id"))
-                        .<Object>map(p -> json(res, p))
-                        .orElseGet(() -> err(res, 404, "Product not found")));
-                post("/:id", (req, res) -> {
-                    String id = req.params("id");
-                    JsonObject body = parseJson(req);
-                    String name  = str(body, "name");
-                    String descr = str(body, "descr");
-                    String image = str(body, "image_url");
-                    BigDecimal price = decimal(body, "price");
-                    Integer stock    = integer(body, "stock");
+            try {
+                List<Product> products = (q == null || q.isBlank())
+                        ? productDao.findAll()
+                        : productDao.findAllFiltered(q);
+                model.put("products", products);
+            } catch (Exception e) {
+                log.error("Error consultando productos", e);
+                model.put("products", java.util.List.of());
+                model.put("error", "No se pudieron cargar los productos.");
+            }
 
-                    if (name == null || price == null || stock == null)
-                        return err(res, 400, "Required: name, price, stock");
-                    if (productDao.findById(id).isPresent())
-                        return err(res, 409, "Product already exists");
+            return new ModelAndView(model, "index.mustache");
+        }, new MustacheTemplateEngine());
 
-                    Product p = new Product();
-                    p.setId(id); p.setName(name); p.setDescr(descr);
-                    p.setImageUrl(image); p.setPrice(price); p.setStock(stock);
+        // ===== Formulario de ofertas =====
+        post("/offers", (req, res) -> {
+            try {
+                String itemId        = value(req.queryParams("itemId"));
+                String promoPriceStr = value(req.queryParams("promoPrice"));
+                String validUntil    = value(req.queryParams("validUntil")); // yyyy-MM-dd
 
-                    productDao.create(p);
-                    res.status(201);
-                    return json(res, Map.of("id", id, "name", name));
-                });
-                put("/:id", (req, res) -> {
-                    String id = req.params("id");
-                    var opt = productDao.findById(id);
-                    if (opt.isEmpty()) return err(res, 404, "Product not found");
-                    Product p = opt.get();
+                if (itemId.isBlank() || promoPriceStr.isBlank() || validUntil.isBlank()) {
+                    throw new IllegalArgumentException("Todos los campos son obligatorios.");
+                }
 
-                    JsonObject body = parseJson(req);
-                    if (body.has("name"))      p.setName(str(body, "name"));
-                    if (body.has("descr"))     p.setDescr(str(body, "descr"));
-                    if (body.has("image_url")) p.setImageUrl(str(body, "image_url"));
-                    if (body.has("price"))     p.setPrice(decimal(body, "price"));
-                    if (body.has("stock"))     p.setStock(integer(body, "stock"));
+                double promoPrice;
+                try {
+                    promoPrice = Double.parseDouble(promoPriceStr);
+                    if (promoPrice < 0) throw new NumberFormatException();
+                } catch (NumberFormatException nfe) {
+                    throw new IllegalArgumentException("Precio promocional inválido.");
+                }
 
-                    productDao.update(p);
-                    return json(res, p);
-                });
-                delete("/:id", (req, res) -> {
-                    boolean ok = productDao.delete(req.params("id"));
-                    if (!ok) return err(res, 404, "Product not found");
-                    return json(res, Map.of("message", "Product deleted"));
-                });
-            });
+                // Verifica que el producto exista
+                Product p = productDao.findById(itemId)
+                        .orElseThrow(() -> new IllegalArgumentException("El producto no existe: " + itemId));
+
+                // Guarda/actualiza oferta
+                productDao.saveOrUpdateOffer(itemId, promoPrice, validUntil);
+
+                req.session().attribute("flash", "Oferta guardada para " + p.getName());
+                res.redirect("/");
+                return null;
+
+            } catch (IllegalArgumentException ex) {
+                res.status(400);
+                return "Error: " + ex.getMessage();
+            } catch (Exception e) {
+                log.error("Error al guardar la oferta", e);
+                res.status(500);
+                return "Error interno al guardar la oferta.";
+            }
         });
-
-        log.info("API ready on port {}", serverPort);
     }
 
-    private static JsonObject parseJson(spark.Request req) {
-        try {
-            return JsonParser.parseString(req.body()).getAsJsonObject();
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid JSON body");
-        }
-    }
-
-    private static Object json(spark.Response res, Object o) {
-        res.type("application/json;charset=utf-8");
-        return gson.toJson(o);
-    }
-
-    private static Object err(spark.Response res, int code, String msg) {
-        res.status(code); res.type("application/json;charset=utf-8");
-        return gson.toJson(Map.of("message", msg));
-    }
-
-    private static String str(JsonObject o, String k) {
-        return o.has(k) && !o.get(k).isJsonNull() ? o.get(k).getAsString() : null;
-    }
-
-    private static BigDecimal decimal(JsonObject o, String k) {
-        return o.has(k) && !o.get(k).isJsonNull() ? new BigDecimal(o.get(k).getAsString()) : null;
-    }
-
-    private static Integer integer(JsonObject o, String k) {
-        return o.has(k) && !o.get(k).isJsonNull() ? o.get(k).getAsInt() : null;
+    private static String value(String s) {
+        return (s == null) ? "" : s.trim();
     }
 }

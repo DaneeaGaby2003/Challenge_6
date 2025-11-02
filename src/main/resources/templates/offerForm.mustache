@@ -1,0 +1,12 @@
+<section class="card">
+  <h2>Gestionar oferta</h2>
+  <form method="post" action="/offers" class="form">
+    <label for="itemId">ID del ítem</label>
+    <input id="itemId" name="itemId" required placeholder="Ej: p1" />
+    <label for="promoPrice">Precio promocional</label>
+    <input id="promoPrice" name="promoPrice" type="number" min="0" step="0.01" required />
+    <label for="validUntil">Válido hasta</label>
+    <input id="validUntil" name="validUntil" type="date" required />
+    <button type="submit">Guardar oferta</button>
+  </form>
+</section>
