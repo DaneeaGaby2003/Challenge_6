@@ -110,7 +110,6 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
-                            <!-- Usa haltOnFailure (NO failOnViolation) -->
                             <haltOnFailure>false</haltOnFailure>
                             <rules>
                                 <rule>
@@ -119,7 +118,6 @@
                                         <include>com.example.ProductDao</include>
                                     </includes>
                                     <limits>
-                                        <!-- Arranca con un mínimo bajito para no bloquearte -->
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
@@ -132,6 +130,17 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- >>> AÑADIDO para ejecutar con mvn exec:java -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.6.2</version>
+                <configuration>
+                    <mainClass>com.example.App</mainClass>
+                </configuration>
+            </plugin>
+            <!-- <<< -->
         </plugins>
     </build>
 </project>
