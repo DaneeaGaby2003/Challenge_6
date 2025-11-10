@@ -1,0 +1,14 @@
+2025-11-01 23:28:56.605329-06:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Error de Sintaxis en sentencia SQL "MERGE INTO product_offers(product_id, promo_price, valid_until)\000aKEY(product_id)\000aVALUES (?, ?, DATE [*]?)\000a"; se esperaba "(, ., [, ., ::, AT, FORMAT, *, /, %, +, -, ||, NOT, IS, ILIKE, REGEXP, AND, OR, ,, )"
+Syntax error in SQL statement "MERGE INTO product_offers(product_id, promo_price, valid_until)\000aKEY(product_id)\000aVALUES (?, ?, DATE [*]?)\000a"; expected "(, ., [, ., ::, AT, FORMAT, *, /, %, +, -, ||, NOT, IS, ILIKE, REGEXP, AND, OR, ,, )"; SQL statement:
+MERGE INTO product_offers(product_id, promo_price, valid_until)
+KEY(product_id)
+VALUES (?, ?, DATE ?)
+ [42001-224]
+2025-11-01 23:30:35.353353-06:00 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Error de Sintaxis en sentencia SQL "MERGE INTO product_offers(product_id, promo_price, valid_until)\000aKEY(product_id)\000aVALUES (?, ?, DATE [*]?)\000a"; se esperaba "(, ., [, ., ::, AT, FORMAT, *, /, %, +, -, ||, NOT, IS, ILIKE, REGEXP, AND, OR, ,, )"
+Syntax error in SQL statement "MERGE INTO product_offers(product_id, promo_price, valid_until)\000aKEY(product_id)\000aVALUES (?, ?, DATE [*]?)\000a"; expected "(, ., [, ., ::, AT, FORMAT, *, /, %, +, -, ||, NOT, IS, ILIKE, REGEXP, AND, OR, ,, )"; SQL statement:
+MERGE INTO product_offers(product_id, promo_price, valid_until)
+KEY(product_id)
+VALUES (?, ?, DATE ?)
+ [42001-224]
