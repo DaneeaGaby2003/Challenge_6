@@ -5,9 +5,12 @@
 
 ## 🧩 Project Overview
 **Spark Collectibles API** is a Java-based web application built with the **Spark Java Framework**.  
-It simulates an online collectibles store where users can manage products, apply promotional offers, and view updated prices dynamically.
+It simulates an online collectibles store where users can **view, search, and manage promotional offers** for products.
 
-Originally, this project started as a REST API in **Sprint 1** (user CRUD), later evolving into a full-featured web system with templates, forms, and exception handling (Sprint 2 and 3).
+The system evolved through three sprints:
+- 🧱 **Sprint 1:** REST API for managing product data (CRUD simulation).
+- 🎨 **Sprint 2:** Integration of **Mustache templates** and **HTML forms** for offer management.
+- 🧪 **Sprint 3:** Added **filtering system**, **test coverage (JaCoCo)**, and **documentation** with PowerShell testing examples.
 
 ---
 
@@ -17,50 +20,98 @@ Originally, this project started as a REST API in **Sprint 1** (user CRUD), late
 | Language | Java | 22 |
 | Framework | Spark Java | 2.9.4 |
 | Template Engine | Mustache | 2.7.1 |
-| Database | H2 (PostgreSQL mode) | 2.x |
+| Database | H2 (PostgreSQL mode) | 2.2.224 |
 | Logging | SLF4J Simple | 1.7.36 |
-| Styles | CSS (Grid Layout + Flexbox) | — |
 | Build Tool | Maven | 3.8+ |
+| Testing | JUnit 5 + JaCoCo | — |
 
 ---
 
 ## 📁 Project Structure
-How to Run
+
+spark-collectibles-api/
+├── src/
+│ ├── main/java/com/example/
+│ │ ├── App.java
+│ │ ├── Product.java
+│ │ ├── ProductDao.java
+│ │ ├── Offer.java
+│ │ └── utils/
+│ ├── main/resources/
+│ │ ├── public/
+│ │ │ └── styles.css
+│ │ └── templates/
+│ │ └── index.mustache
+│ └── test/java/com/example/ProductDaoTest.java
+├── pom.xml
+└── README.md
+
+🧪 How to Test (Using PowerShell)   
+---
+# Run server
+mvn exec:java "-Dexec.mainClass=com.example.App"
+
+# Home
+Invoke-WebRequest http://localhost:4567/ | Select-Object -Expand Content | Out-Host
+
+# Filter by name
+Invoke-WebRequest "http://localhost:4567/?q=goku" | Select-Object -Expand Content | Out-Host
+Invoke-WebRequest "http://localhost:4567/?q=pikachu" | Select-Object -Expand Content | Out-Host
+
+# Create new offer
+$body = @{
+itemId     = 'p2'
+promoPrice = '999.00'
+validUntil = (Get-Date).AddDays(5).ToString('yyyy-MM-dd')
+}
+Invoke-WebRequest -Uri http://localhost:4567/offers -Method POST `
+  -Body $body -ContentType 'application/x-www-form-urlencoded' `
+-MaximumRedirection 0
+
+# Remove offer
+Invoke-WebRequest -Uri http://localhost:4567/offers/delete -Method POST `
+  -Body @{ itemId = 'p1' } -ContentType 'application/x-www-form-urlencoded' `
+-MaximumRedirection 0
+
+# Health check
+Invoke-WebRequest http://localhost:4567/ping | Select-Object -Expand Content
+
+## 🚀 How to Run
+
+```bash
 # Build the project
 mvn clean package
 
-# Run the application
+# Run the app
 mvn exec:java -Dexec.mainClass="com.example.App"
 
-# Or run from the shaded JAR
-java -jar target/spark-collectibles-api-1.0.0-shaded.jar
-
-🧩 Database Schema
--- products
-id VARCHAR(40) PRIMARY KEY,
-name VARCHAR(120),
-descr VARCHAR(2000),
-price DECIMAL(12,2),
-stock INT
-
--- product_offers
-product_id VARCHAR(40) PRIMARY KEY REFERENCES products(id),
-promo_price DECIMAL(12,2),
-valid_until DATE
+The app runs at:
+👉 http://localhost:4567/
 
 
-Seed data:
+| Column | Type          | Description   |
+| ------ | ------------- | ------------- |
+| id     | VARCHAR(40)   | Primary Key   |
+| name   | VARCHAR(120)  | Product name  |
+| descr  | VARCHAR(2000) | Description   |
+| price  | DECIMAL(12,2) | Regular price |
+| stock  | INT           | Quantity      |
 
-ID	Name	Price	Stock
-p1	Figura Goku	499.00	10
-p2	Carta Pikachu	1299.00	5
-🧪 Testing Endpoints (Optional)
-curl -s http://localhost:4567/    # View web interface
-curl -s http://localhost:4567/ping
 
-🧾 License & Author
+#| Column      | Type          | Description              |
+| ----------- | ------------- | ------------------------ |
+| product_id  | VARCHAR(40)   | References `products.id` |
+| promo_price | DECIMAL(12,2) | Discounted price         |
+| valid_until | DATE          | Expiration date of offer |
+
+| ID | Name          | Price   | Stock |
+| -- | ------------- | ------- | ----- |
+| p1 | Figura Goku   | 499.00  | 10    |
+| p2 | Carta Pikachu | 1299.00 | 5     |
+
+####🧾 License & Author
 
 Author: Daneea Román
 Repository: DaneeaGaby2003/Challenge_6
 
-License: MIT (optional line)
+License: MIT (optional)
