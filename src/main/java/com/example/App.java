@@ -116,7 +116,37 @@ public class App {
                 return "Error interno al guardar la oferta.";
             }
         });
-    }
+
+        // ===== (NUEVO) Eliminar oferta =====
+        post("/offers/delete", (req, res) -> {
+            try {
+                String itemId = value(req.queryParams("itemId"));
+                if (itemId.isBlank()) {
+                    throw new IllegalArgumentException("Debes indicar el ID del producto.");
+                }
+
+                // Verifica existencia del producto
+                productDao.findById(itemId)
+                        .orElseThrow(() -> new IllegalArgumentException("El producto no existe: " + itemId));
+
+                // Borra la oferta
+                productDao.deleteOffer(itemId);
+
+                req.session().attribute("flash", "Oferta eliminada para " + itemId);
+                res.redirect("/");
+                return null;
+
+            } catch (IllegalArgumentException ex) {
+                res.status(400);
+                return "Error: " + ex.getMessage();
+            } catch (Exception e) {
+                log.error("Error al eliminar la oferta", e);
+                res.status(500);
+                return "Error interno al eliminar la oferta.";
+            }
+        });
+
+    } // Fin del método main
 
     private static String value(String s) {
         return (s == null) ? "" : s.trim();

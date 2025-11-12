@@ -34,14 +34,12 @@
     {{#flash}}<div class="alert success">{{.}}</div>{{/flash}}
     {{#error}}<div class="alert error">{{.}}</div>{{/error}}
 
-    <!-- Buscador -->
     <form method="get" action="/" style="margin:0 0 1rem 0;">
       <input name="q" value="{{q}}" placeholder="Buscar por nombre o descripción" />
       <button type="submit">Filtrar</button>
     </form>
 
     <section class="grid-two">
-      <!-- Columna izquierda: listado -->
       <div>
         <h2>Productos</h2>
         <div class="grid" id="grid">
@@ -57,7 +55,12 @@
                 <span class="price">${{promoPrice}}</span>
               </p>
               {{#validUntil}}<p class="muted">Válido hasta: {{validUntil}}</p>{{/validUntil}}
-            {{/promoPrice}}
+
+              <form method="post" action="/offers/delete" style="margin-top:.5rem">
+                <input type="hidden" name="itemId" value="{{id}}"/>
+                <button type="submit">Quitar oferta</button>
+              </form>
+              {{/promoPrice}}
 
             {{^promoPrice}}
               <p class="price">${{price}}</p>
@@ -72,7 +75,6 @@
         </div>
       </div>
 
-      <!-- Columna derecha: formulario -->
       <div>
         <section class="card">
           <h2>Gestionar oferta</h2>

@@ -139,6 +139,17 @@ public class ProductDao {
         }
     }
 
+    /** Elimina la oferta (si existe) para el producto dado. */
+    public void deleteOffer(String productId) {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "DELETE FROM product_offers WHERE product_id = ?")) {
+            ps.setString(1, productId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al eliminar oferta de " + productId, e);
+        }
+    }
+
     // ===== util =====
     private Product mapRow(ResultSet rs) throws SQLException {
         Product p = new Product();

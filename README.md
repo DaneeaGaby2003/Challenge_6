@@ -4,114 +4,148 @@
 ---
 
 ## 🧩 Project Overview
-**Spark Collectibles API** is a Java-based web application built with the **Spark Java Framework**.  
-It simulates an online collectibles store where users can **view, search, and manage promotional offers** for products.
 
-The system evolved through three sprints:
-- 🧱 **Sprint 1:** REST API for managing product data (CRUD simulation).
-- 🎨 **Sprint 2:** Integration of **Mustache templates** and **HTML forms** for offer management.
-- 🧪 **Sprint 3:** Added **filtering system**, **test coverage (JaCoCo)**, and **documentation** with PowerShell testing examples.
+**Spark Collectibles API** is a Java-based web application built with the **Spark Java Framework**.  
+It simulates an online collectibles store where users can **view, search, and manage promotional offers** for products in real time.
+
+The system evolved through three main development sprints:
+
+- 🧱 **Sprint 1:** Initial **REST API** for managing product data (CRUD simulation).
+- 🎨 **Sprint 2:** Integration of **Mustache templates**, **HTML forms**, and **error handling** for managing offers visually.
+- 🧪 **Sprint 3:** Added **search filters**, **offer removal feature**, **automated testing (JUnit)**, **coverage reports (JaCoCo)**, and full **documentation** with PowerShell testing examples.
 
 ---
 
 ## ⚙️ Tech Stack
+
 | Component | Technology | Version |
 |------------|-------------|----------|
 | Language | Java | 22 |
 | Framework | Spark Java | 2.9.4 |
 | Template Engine | Mustache | 2.7.1 |
-| Database | H2 (PostgreSQL mode) | 2.2.224 |
+| Database | H2 (PostgreSQL Mode) | 2.2.224 |
 | Logging | SLF4J Simple | 1.7.36 |
 | Build Tool | Maven | 3.8+ |
 | Testing | JUnit 5 + JaCoCo | — |
 
 ---
+## 💡 Features Implemented
+| **Feature**         | **Description**                                                   |
+| ------------------- | ----------------------------------------------------------------- |
+| 🗂️ Product Listing | Displays all products in the database with price and description. |
+| 🔎 Search Filter    | Users can filter by product name or description.                  |
+| 💰 Manage Offers    | Operators can create or update promotional prices using a form.   |
+| ❌ Delete Offers     | Existing offers can be removed via the web interface.             |
+| ⚠️ Error Handling   | 400, 404, and 500 routes display friendly messages.               |
+| ✅ Health Check      | `GET /ping` confirms server availability.                         |
+| 🧪 Unit Tests       | `ProductDaoTest` verifies CRUD and filtering logic.               |
+| 📊 Coverage         | Integrated **JaCoCo** plugin generates HTML coverage report.      |
+
+## 📊 User Stories Summary
+|   **ID**  | **User Story**                                                 | **Acceptance Criteria**                           | **Sprint** |
+| :-------: | :------------------------------------------------------------- | :------------------------------------------------ | :--------: |
+| **US-01** | As a Visitor, I want the service to respond to a health check. | `GET /ping` returns "pong".                       |      1     |
+| **US-02** | As a Visitor, I want to see stored products.                   | Seed data appears in the interface.               |      1     |
+| **US-03** | As a Visitor, I want to see product list visually.             | `GET /` renders Mustache HTML with product cards. |      2     |
+| **US-04** | As an Operator, I want to create or update offers.             | `POST /offers` saves promo data, redirects 302→/. |      2     |
+| **US-05** | As a Visitor, I want to see promo price and validity.          | Card shows discounted price and expiration date.  |      2     |
+| **US-06** | As a User, I want error handling for invalid actions.          | Returns 400, 404, or 500 pages.                   |      2     |
+| **US-07** | As a Visitor, I want to filter products by name.               | `GET /?q=text` filters products dynamically.      |      3     |
+| **US-08** | As an Operator, I want to remove existing offers.              | `POST /offers/delete` removes offer successfully. |      3     |
+| **US-09** | As a Developer, I want automated test coverage.                | JaCoCo report generated with JUnit.               |      3     |
+| **US-10** | As a Reviewer, I want clear documentation and diagrams.        | README includes setup, usage, and testing info.   |      3     |
+
+## 🧭 Sprint 3 Key Deliverables
+| Deliverable                   | Description                                         |
+| ----------------------------- | --------------------------------------------------- |
+| ✅ **Functional Filtering**    | Search bar filters by product name or description.  |
+| ✅ **Offer Management System** | Allows creation, update, and removal of offers.     |
+| ✅ **Testing Integration**     | Unit tests verify DAO logic with coverage reports.  |
+| ✅ **Documentation**           | README and diagrams included for developer clarity. |
+
+## 📈 Flow Diagram – Offer Creation and Search
+User fills Offer Form
+│
+▼
+[POST /offers]
+│
+▼
+Validate Input
+│
+├─ Invalid → return 400 + error message
+│
+▼
+Check product exists (DAO.findById)
+│
+▼
+Insert/Update offer in DB
+│
+▼
+Redirect → "/" (Home)
+│
+▼
+Mustache re-renders product list
+(showing promo price + validUntil)
+
+## 🧮 System Architecture Diagram (ASCII version for README)
+                   ┌────────────────────────────┐
+                   │        User / Browser       │
+                   │────────────────────────────│
+                   │  • Visits / (Home Page)     │
+                   │  • Submits Offer Form       │
+                   │  • Searches by name (q=)    │
+                   └──────────────┬─────────────┘
+                                  │  HTTP Requests (GET / POST)
+                                  ▼
+         ┌────────────────────────────────────────────────────────┐
+         │                 Spark Java Server (App.java)           │
+         │────────────────────────────────────────────────────────│
+         │ • Defines routes: "/", "/offers", "/offers/delete"     │
+         │ • Handles forms & filtering logic                      │
+         │ • Renders HTML with Mustache templates                 │
+         │ • Returns 400 / 404 / 500 pages if needed              │
+         └──────────────┬────────────────────────────────────────┘
+                        │
+                        │ DAO Calls (SQL)
+                        ▼
+        ┌───────────────────────────────────────────────┐
+        │                ProductDao.java                │
+        │───────────────────────────────────────────────│
+        │ • Connects to H2 database                     │
+        │ • findAll(), findAllFiltered(q)               │
+        │ • saveOrUpdateOffer(), deleteOffer()          │
+        │ • findById()                                  │
+        └──────────────┬────────────────────────────────┘
+                       │ JDBC
+                       ▼
+          ┌────────────────────────────────────────┐
+          │              H2 Database                │
+          │────────────────────────────────────────│
+          │ Tables:                                │
+          │  - products (id, name, descr, price)    │
+          │  - product_offers (promo_price, date)   │
+          └────────────────────────────────────────┘
 
 ## 📁 Project Structure
 
+```bash
 spark-collectibles-api/
 ├── src/
-│ ├── main/java/com/example/
-│ │ ├── App.java
-│ │ ├── Product.java
-│ │ ├── ProductDao.java
-│ │ ├── Offer.java
-│ │ └── utils/
-│ ├── main/resources/
-│ │ ├── public/
-│ │ │ └── styles.css
-│ │ └── templates/
-│ │ └── index.mustache
-│ └── test/java/com/example/ProductDaoTest.java
-├── pom.xml
+│   ├── main/java/com/example/
+│   │   ├── App.java                # Main server (routes + templates)
+│   │   ├── Product.java            # Model class
+│   │   ├── ProductDao.java         # DAO with SQL logic
+│   │   ├── Offer.java              # Offer data model
+│   ├── main/resources/
+│   │   ├── public/
+│   │   │   └── styles.css          # Basic CSS styling
+│   │   └── templates/
+│   │       └── index.mustache      # Web interface template
+│   └── test/java/com/example/
+│       └── ProductDaoTest.java     # JUnit test cases
+├── pom.xml                         # Maven configuration
 └── README.md
 
-🧪 How to Test (Using PowerShell)   
----
-# Run server
-mvn exec:java "-Dexec.mainClass=com.example.App"
-
-# Home
-Invoke-WebRequest http://localhost:4567/ | Select-Object -Expand Content | Out-Host
-
-# Filter by name
-Invoke-WebRequest "http://localhost:4567/?q=goku" | Select-Object -Expand Content | Out-Host
-Invoke-WebRequest "http://localhost:4567/?q=pikachu" | Select-Object -Expand Content | Out-Host
-
-# Create new offer
-$body = @{
-itemId     = 'p2'
-promoPrice = '999.00'
-validUntil = (Get-Date).AddDays(5).ToString('yyyy-MM-dd')
-}
-Invoke-WebRequest -Uri http://localhost:4567/offers -Method POST `
-  -Body $body -ContentType 'application/x-www-form-urlencoded' `
--MaximumRedirection 0
-
-# Remove offer
-Invoke-WebRequest -Uri http://localhost:4567/offers/delete -Method POST `
-  -Body @{ itemId = 'p1' } -ContentType 'application/x-www-form-urlencoded' `
--MaximumRedirection 0
-
-# Health check
-Invoke-WebRequest http://localhost:4567/ping | Select-Object -Expand Content
-
-## 🚀 How to Run
-
-```bash
-# Build the project
-mvn clean package
-
-# Run the app
-mvn exec:java -Dexec.mainClass="com.example.App"
-
-The app runs at:
-👉 http://localhost:4567/
-
-
-| Column | Type          | Description   |
-| ------ | ------------- | ------------- |
-| id     | VARCHAR(40)   | Primary Key   |
-| name   | VARCHAR(120)  | Product name  |
-| descr  | VARCHAR(2000) | Description   |
-| price  | DECIMAL(12,2) | Regular price |
-| stock  | INT           | Quantity      |
-
-
-#| Column      | Type          | Description              |
-| ----------- | ------------- | ------------------------ |
-| product_id  | VARCHAR(40)   | References `products.id` |
-| promo_price | DECIMAL(12,2) | Discounted price         |
-| valid_until | DATE          | Expiration date of offer |
-
-| ID | Name          | Price   | Stock |
-| -- | ------------- | ------- | ----- |
-| p1 | Figura Goku   | 499.00  | 10    |
-| p2 | Carta Pikachu | 1299.00 | 5     |
-
-####🧾 License & Author
-
 Author: Daneea Román
-Repository: DaneeaGaby2003/Challenge_6
-
+Repository: Challenge_6
 License: MIT (optional)
